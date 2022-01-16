@@ -101,18 +101,25 @@ def get_dependencies(
             )
             return
         raise DependencyNotFound(lib_fname)
-    rpaths = get_rpaths(lib_fname) + get_environment_variable_paths()
+    rpaths = (dirname(lib_fname),)+get_rpaths(lib_fname) + get_environment_variable_paths()
     for install_name in get_install_names(lib_fname):
+        install_name_lookup = install_name
+        if install_name_lookup.startswith("/Users"):
+            install_name_lookup = basename(install_name_lookup)
+        if not install_name_lookup.startswith("/") and not install_name_lookup.startswith("@"):
+            install_name_lookup = "@rpath/"+install_name_lookup
         try:
-            if install_name.startswith("@"):
+            print("lib_fname",lib_fname)
+            print("executable_path",executable_path)
+            if install_name_lookup.startswith("@"):
                 dependency_path = resolve_dynamic_paths(
-                    install_name,
+                    install_name_lookup,
                     rpaths,
                     loader_path=dirname(lib_fname),
                     executable_path=executable_path,
                 )
             else:
-                dependency_path = search_environment_for_lib(install_name)
+                dependency_path = search_environment_for_lib(install_name_lookup)
             if not os.path.isfile(dependency_path):
                 if not _filter_system_libs(dependency_path):
                     logger.debug(

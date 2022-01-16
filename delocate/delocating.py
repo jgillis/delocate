@@ -35,6 +35,7 @@ from .libsana import (
 )
 from .tmpdirs import TemporaryDirectory
 from .tools import (
+    add_rpath,
     dir2zip,
     find_package_dirs,
     get_archs,
@@ -208,8 +209,9 @@ def _update_install_names(
     for required in files_to_delocate:
         # Set relative path for local library
         for requiring, orig_install_name in lib_dict[required].items():
+            add_rpath(requiring, '@loader_path/')
             req_rel = relpath(required, dirname(requiring))
-            new_install_name = "@loader_path/" + req_rel
+            new_install_name = "@rpath/" + req_rel
             logger.info(
                 "Modifying install name in %s from %s to %s",
                 relpath(requiring, root_path),
@@ -354,10 +356,11 @@ def _copy_required(
         procd_requirings = {}
         # Set requiring lib install names to point to local copy
         for requiring, orig_install_name in requirings.items():
+            add_rpath(requiring, '@loader_path/')
             set_install_name(
                 requiring,
                 orig_install_name,
-                "@loader_path/" + basename(required),
+                "@rpath/" + basename(required),
             )
             # Make processed version of ``dependings_dict``
             mapped_requiring = copied2orig.get(requiring, requiring)
@@ -511,7 +514,7 @@ def _decide_dylib_bundle_directory(
         # Otherwise, store dylib files in the first package alphabetically.
         return pjoin(min(package_dirs), lib_sdir)
     # Otherwise, use an auditwheel-style top-level name.
-    return pjoin(wheel_dir, f"{package_name}.dylibs")
+    return pjoin(wheel_dir, f"{package_name}{lib_sdir}")
 
 
 def _make_install_name_ids_unique(
@@ -648,7 +651,7 @@ def delocate_wheel(
             executable_path=executable_path,
             ignore_missing=ignore_missing,
         )
-        if copied_libs and lib_path_exists_before_delocate:
+        if False and copied_libs and lib_path_exists_before_delocate:
             raise DelocationError(
                 "f{lib_path} already exists in wheel but need to copy "
                 + "; ".join(copied_libs)

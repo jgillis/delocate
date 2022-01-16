@@ -744,12 +744,20 @@ def add_rpath(filename: str, newpath: str, ad_hoc_sign: bool = True) -> None:
     ad_hoc_sign : {True, False}, optional
         If True, sign file with ad-hoc signature
     """
-    subprocess.run(
-        ["install_name_tool", "-add_rpath", newpath, filename],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-    )
+    try:
+        subprocess.run(
+            ["install_name_tool", "-add_rpath", newpath, filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        if "would duplicate path" in e.stderr.decode("ascii"):
+            # Silent ignore duplication
+            pass
+        else:
+            raise e
+
     if ad_hoc_sign:
         replace_signature(filename, "-")
 
@@ -952,12 +960,19 @@ def replace_signature(filename: str, identity: str) -> None:
     identity : str
         The signing identity to use.
     """
-    subprocess.run(
-        ["codesign", "--force", "--sign", identity, filename],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=True,
-    )
+    try:
+        subprocess.run(
+            ["codesign", "--force", "--sign", identity, filename],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        if "not signed at all" in e.stderr.decode("ascii"):
+            # Silent ignore if already unsigned
+            pass
+        else:
+            raise e
 
 
 def validate_signature(filename: str) -> None:
