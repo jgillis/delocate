@@ -11,10 +11,13 @@ from __future__ import absolute_import, division, print_function
 import os
 import shutil
 import subprocess
+import sys
 from os.path import abspath, basename, dirname, exists, isfile
 from os.path import join as pjoin
 from os.path import realpath, splitext
 from typing import Text
+
+import pytest
 
 from ..tmpdirs import InGivenDirectory, InTemporaryDirectory
 from ..tools import dir2zip, set_install_name, zip2dir
@@ -71,6 +74,7 @@ bytes_runner = ScriptRunner()
 DATA_PATH = abspath(pjoin(dirname(__file__), "data"))
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Needs macOS linkage.")
 def test_listdeps(plat_wheel: PlatWheel) -> None:
     # smokey tests of list dependencies command
     local_libs = {
@@ -160,6 +164,7 @@ def test_listdeps(plat_wheel: PlatWheel) -> None:
     ]
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Runs macOS executable.")
 def test_path() -> None:
     # Test path cleaning
     with InTemporaryDirectory():
@@ -186,6 +191,7 @@ def test_path() -> None:
         assert os.listdir(out_path) == ["libfake.dylib"]
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Needs macOS linkage.")
 def test_path_dylibs():
     # Test delocate-path with and without dylib extensions
     with InTemporaryDirectory():
@@ -216,6 +222,7 @@ def _check_wheel(wheel_fname, lib_sdir):
         assert_equal(os.listdir(dylibs), ["libextfunc.dylib"])
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Needs macOS linkage.")
 def test_wheel():
     # Some tests for wheel fixing
     with InTemporaryDirectory() as tmpdir:
@@ -275,6 +282,7 @@ def test_wheel():
         assert_equal(stdout, wheel_lines1 + wheel_lines2)
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Needs macOS linkage.")
 def test_fix_wheel_dylibs():
     # Check default and non-default search for dynamic libraries
     with InTemporaryDirectory() as tmpdir:
@@ -293,6 +301,7 @@ def test_fix_wheel_dylibs():
             assert_false(exists(pjoin("fakepkg1", ".dylibs")))
 
 
+@pytest.mark.xfail(sys.platform != "darwin", reason="Needs macOS linkage.")
 def test_fix_wheel_archs():
     # type: () -> None
     # Some tests for wheel fixing
@@ -376,6 +385,7 @@ def test_fix_wheel_archs():
                 assert_false(code == 0)
 
 
+@pytest.mark.xfail(sys.platform == "win32", reason="Can't run scripts.")
 def test_fuse_wheels():
     # Some tests for wheel fusing
     with InTemporaryDirectory():
@@ -398,6 +408,7 @@ def test_fuse_wheels():
         assert_same_tree("to_wheel_refused", "from_wheel")
 
 
+@pytest.mark.xfail(sys.platform == "win32", reason="Can't run scripts.")
 def test_patch_wheel():
     # Some tests for patching wheel
     with InTemporaryDirectory():
@@ -426,32 +437,29 @@ def test_patch_wheel():
         )
 
 
-def test_add_platforms():
+@pytest.mark.xfail(sys.platform == "win32", reason="Can't run scripts.")
+def test_add_platforms() -> None:
     # Check adding platform to wheel name and tag section
     assert_winfo_similar(PLAT_WHEEL, EXP_ITEMS, drop_version=False)
     with InTemporaryDirectory() as tmpdir:
         # First wheel needs proper wheel filename for later unpack test
         out_fname = basename(PURE_WHEEL)
         # Need to specify at least one platform
-        assert_raises(
-            RuntimeError,
-            run_command,
-            ["delocate-addplat", PURE_WHEEL, "-w", tmpdir],
-        )
+        with pytest.raises(RuntimeError):
+            run_command(["delocate-addplat", PURE_WHEEL, "-w", tmpdir])
         plat_args = ["-p", EXTRA_PLATS[0], "--plat-tag", EXTRA_PLATS[1]]
         # Can't add platforms to a pure wheel
-        assert_raises(
-            RuntimeError,
-            run_command,
-            ["delocate-addplat", PURE_WHEEL, "-w", tmpdir] + plat_args,
-        )
-        assert_false(exists(out_fname))
+        with pytest.raises(RuntimeError):
+            run_command(
+                ["delocate-addplat", PURE_WHEEL, "-w", tmpdir] + plat_args
+            )
+        assert not exists(out_fname)
         # Error raised (as above) unless ``--skip-error`` flag set
         code, stdout, stderr = run_command(
             ["delocate-addplat", PURE_WHEEL, "-w", tmpdir, "-k"] + plat_args
         )
         # Still doesn't do anything though
-        assert_false(exists(out_fname))
+        assert not exists(out_fname)
         # Works for plat_wheel
         out_fname = ".".join(
             (splitext(basename(PLAT_WHEEL))[0],) + EXTRA_PLATS + ("whl",)
@@ -459,14 +467,13 @@ def test_add_platforms():
         code, stdout, stderr = run_command(
             ["delocate-addplat", PLAT_WHEEL, "-w", tmpdir] + plat_args
         )
-        assert_true(isfile(out_fname))
+        assert isfile(out_fname)
         assert_winfo_similar(out_fname, EXTRA_EXPS)
         # If wheel exists (as it does) then raise error
-        assert_raises(
-            RuntimeError,
-            run_command,
-            ["delocate-addplat", PLAT_WHEEL, "-w", tmpdir] + plat_args,
-        )
+        with pytest.raises(RuntimeError):
+            run_command(
+                ["delocate-addplat", PLAT_WHEEL, "-w", tmpdir] + plat_args
+            )
         # Unless clobber is set
         code, stdout, stderr = run_command(
             ["delocate-addplat", PLAT_WHEEL, "-c", "-w", tmpdir] + plat_args
@@ -509,14 +516,14 @@ def test_add_platforms():
         code, stdout, stderr = run_command(
             ["delocate-addplat", local_plat] + plat_args
         )
-        assert_true(exists(local_out))
+        assert exists(local_out)
         # With rm_orig flag, delete original unmodified wheel
         os.unlink(local_out)
         code, stdout, stderr = run_command(
             ["delocate-addplat", "-r", local_plat] + plat_args
         )
-        assert_false(exists(local_plat))
-        assert_true(exists(local_out))
+        assert not exists(local_plat)
+        assert exists(local_out)
         # Copy original back again
         shutil.copy2(PLAT_WHEEL, "wheels")
         # If platforms already present, don't write more
@@ -525,20 +532,19 @@ def test_add_platforms():
         code, stdout, stderr = run_command(
             ["delocate-addplat", local_out, "--clobber"] + plat_args
         )
-        assert_equal(sorted(os.listdir("wheels")), res)
+        assert sorted(os.listdir("wheels")) == res
         assert_winfo_similar(local_out, EXTRA_EXPS)
         # The wheel doesn't get deleted output name same as input, as here
         code, stdout, stderr = run_command(
             ["delocate-addplat", local_out, "-r", "--clobber"] + plat_args
         )
-        assert_equal(sorted(os.listdir("wheels")), res)
+        assert sorted(os.listdir("wheels")) == res
         # But adds WHEEL tags if missing, even if file name is OK
         shutil.copy2(local_plat, local_out)
-        assert_raises(
-            AssertionError, assert_winfo_similar, local_out, EXTRA_EXPS
-        )
+        with pytest.raises(AssertionError):
+            assert_winfo_similar(local_out, EXTRA_EXPS)
         code, stdout, stderr = run_command(
             ["delocate-addplat", local_out, "--clobber"] + plat_args
         )
-        assert_equal(sorted(os.listdir("wheels")), res)
+        assert sorted(os.listdir("wheels")) == res
         assert_winfo_similar(local_out, EXTRA_EXPS)

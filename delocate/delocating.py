@@ -212,13 +212,21 @@ def _update_install_names(
             add_rpath(requiring, '@loader_path/')
             req_rel = relpath(required, dirname(requiring))
             new_install_name = "@rpath/" + req_rel
-            logger.info(
-                "Modifying install name in %s from %s to %s",
-                relpath(requiring, root_path),
-                orig_install_name,
-                new_install_name,
-            )
-            set_install_name(requiring, orig_install_name, new_install_name)
+            if orig_install_name == new_install_name:
+                logger.info(
+                    "NOT modifying install name in %s from %s, as the new name"
+                    " would be the same.",
+                    relpath(requiring, root_path),
+                    orig_install_name,
+                )
+            else:
+                logger.info(
+                    "Modifying install name in %s from %s to %s",
+                    relpath(requiring, root_path),
+                    orig_install_name,
+                    new_install_name,
+                )
+                set_install_name(requiring, orig_install_name, new_install_name)
 
 
 def copy_recurse(
@@ -673,8 +681,7 @@ def delocate_wheel(
             libraries=libraries_in_lib_path,
             install_id_prefix=DLC_PREFIX + relpath(lib_sdir, wheel_dir),
         )
-        if len(copied_libs):
-            rewrite_record(wheel_dir)
+        rewrite_record(wheel_dir)
         if len(copied_libs) or not in_place:
             dir2zip(wheel_dir, out_wheel)
     return stripped_lib_dict(copied_libs, wheel_dir + os.path.sep)
