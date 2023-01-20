@@ -776,7 +776,7 @@ def add_rpath(filename: str, newpath: str, ad_hoc_sign: bool = True) -> None:
     """
     try:
         _run(["install_name_tool", "-add_rpath", newpath, filename], check=True)
-    except subprocess.CalledProcessError as e:
+    except RuntimeError as e:
         if "would duplicate path" in e.stderr.decode("ascii"):
             # Silent ignore duplication
             pass
