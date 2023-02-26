@@ -152,6 +152,7 @@ def walk_library(
     filt_func=lambda filepath: True,  # type: Callable[[Text], bool]
     visited=None,  # type: Optional[Set[Text]]
     executable_path=None,  # type: Optional[Text]
+    skip_libs=None # type: Union[None,str,Iterable[str]]
 ):
     # type: (...) -> Iterator[Text]
     """
@@ -199,6 +200,9 @@ def walk_library(
         lib_fname, executable_path=executable_path, filt_func=filt_func
     ):
         if dependency_fname is None:
+            for e in skip_libs:
+                if e in install_name:
+                    continue
             logger.error(
                 "%s not found, requested by %s",
                 install_name,
@@ -218,6 +222,7 @@ def walk_directory(
     root_path,  # type: Text
     filt_func=lambda filepath: True,  # type: Callable[[Text], bool]
     executable_path=None,  # type: Optional[Text]
+    skip_libs=None # type: Union[None,str,Iterable[str]]
 ):
     # type: (...) -> Iterator[Text]
     """Walk along dependencies starting with the libraries within `root_path`.
@@ -257,6 +262,7 @@ def walk_directory(
                 filt_func=filt_func,
                 visited=visited_paths,
                 executable_path=executable_path,
+                skip_libs=skip_libs
             ):
                 yield library_path
 
@@ -312,9 +318,6 @@ def _tree_libs_from_libraries(
         When any dependencies can not be located and ``ignore_missing`` is
         False.
     """
-    skip_libs = [] if skip_libs is None else skip_libs
-    if isinstance(skip_libs, str):
-        skip_libs = ":".split(skip_libs)
     lib_dict: Dict[str, Dict[str, str]] = {}
     missing_libs = False
     for library_path in libraries:
@@ -398,9 +401,12 @@ def tree_libs_from_directory(
         When any dependencies can not be located and ``ignore_missing`` is
         False.
     """
+    skip_libs = [] if skip_libs is None else skip_libs
+    if isinstance(skip_libs, str):
+        skip_libs = skip_libs.split(":")
     return _tree_libs_from_libraries(
         walk_directory(
-            start_path, lib_filt_func, executable_path=executable_path
+            start_path, lib_filt_func, executable_path=executable_path, skip_libs=skip_libs
         ),
         lib_filt_func=lib_filt_func,
         copy_filt_func=copy_filt_func,
