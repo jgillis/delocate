@@ -20,6 +20,7 @@ from typing import (
     Set,
     Text,
     Tuple,
+    Union,
 )
 
 import delocate.delocating
@@ -267,7 +268,7 @@ def _tree_libs_from_libraries(
     copy_filt_func: Callable[[str], bool],
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
-    skip_libs: Optional[None,str,Iterable[str]] = None,
+    skip_libs: Union[None,str,Iterable[str]] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Return an analysis of the dependencies of `libraries`.
 
@@ -351,7 +352,7 @@ def tree_libs_from_directory(
     copy_filt_func: Callable[[str], bool] = lambda path: True,
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
-    skip_libs: Optional[None,str,Iterable[str]] = None,
+    skip_libs: Union[None,str,Iterable[str]] = None,
 ) -> Dict[Text, Dict[Text, Text]]:
     """Return an analysis of the libraries in the directory of `start_path`.
 
