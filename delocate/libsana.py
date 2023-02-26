@@ -200,14 +200,16 @@ def walk_library(
         lib_fname, executable_path=executable_path, filt_func=filt_func
     ):
         if dependency_fname is None:
+            skip = False
             for e in skip_libs:
                 if e in install_name:
-                    continue
-            logger.error(
-                "%s not found, requested by %s",
-                install_name,
-                lib_fname,
-            )
+                    skip = True
+            if not skip:
+                logger.error(
+                    "%s not found, requested by %s",
+                    install_name,
+                    lib_fname,
+                )
             continue
         for sub_dependency in walk_library(
             dependency_fname,
