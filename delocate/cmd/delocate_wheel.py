@@ -127,6 +127,16 @@ def main():
     else:
         require_archs = opts.require_archs
     lib_filt_func = "dylibs-only" if opts.dylibs_only else None
+    skip_libs = [] if skip_libs is None else skip_libs
+    if isinstance(skip_libs, str):
+        skip_libs = skip_libs.split(":")
+    def lib_filt_func(arg):
+        print("filtering", arg)
+        for lib in skip_libs:
+            if lib in arg:
+                print("filtering hit.")
+                return False
+        return True
     for wheel in wheels:
         if multi or opts.verbose:
             print("Fixing: " + wheel)
