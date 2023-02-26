@@ -412,6 +412,7 @@ def delocate_path(
     copy_filt_func=filter_system_libs,  # type: Optional[Callable[[Text], bool]]
     executable_path=None,  # type: Optional[Text]
     ignore_missing=False,  # type: bool
+    skip_libs= None # Union[None, str, Iterable[str]]
 ):
     # type: (...) -> Dict[Text, Dict[Text, Text]]
     """Copy required libraries for files in `tree_path` into `lib_path`
@@ -479,6 +480,7 @@ def delocate_path(
         copy_filt_func=filt_func,
         executable_path=executable_path,
         ignore_missing=ignore_missing,
+        skip_libs=skip_libs
     )
 
     return delocate_tree_libs(lib_dict, lib_path, tree_path)
@@ -571,6 +573,7 @@ def delocate_wheel(
     check_verbose: Optional[bool] = None,
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
+    skip_libs: Union[None, str, Iterable[str]] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Update wheel by copying required libraries to `lib_sdir` in wheel
 
@@ -658,6 +661,7 @@ def delocate_wheel(
             copy_filt_func,
             executable_path=executable_path,
             ignore_missing=ignore_missing,
+            skip_libs=skip_libs
         )
         if False and copied_libs and lib_path_exists_before_delocate:
             raise DelocationError(

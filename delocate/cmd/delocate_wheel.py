@@ -92,6 +92,15 @@ def main():
                     "as much as possible"
                 ),
             ),
+            Option(
+                "--skip-libs",
+                action="store",
+                type="string",
+                default = None,
+                help=(
+                    "Skip dependencies whose names match occur in this argument."
+                ),
+            )
         ]
     )
     (opts, wheels) = parser.parse_args()
@@ -133,6 +142,7 @@ def main():
             require_archs=require_archs,
             executable_path=opts.executable_path,
             ignore_missing=opts.ignore_missing_dependencies,
+            skip_libs=opts.skip_libs
         )
         if opts.verbose and len(copied):
             print("Copied to package {0} directory:".format(opts.lib_sdir))

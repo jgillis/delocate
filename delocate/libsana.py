@@ -267,6 +267,7 @@ def _tree_libs_from_libraries(
     copy_filt_func: Callable[[str], bool],
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
+    skip_libs: Optional[None,str,Iterable[str]] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Return an analysis of the dependencies of `libraries`.
 
@@ -310,6 +311,9 @@ def _tree_libs_from_libraries(
         When any dependencies can not be located and ``ignore_missing`` is
         False.
     """
+    skip_libs = [] if skip_libs is None else skip_libs
+    if isinstance(skip_libs, str):
+        skip_libs = ":".split(skip_libs)
     lib_dict: Dict[str, Dict[str, str]] = {}
     missing_libs = False
     for library_path in libraries:
@@ -318,7 +322,11 @@ def _tree_libs_from_libraries(
             executable_path=executable_path,
             filt_func=lib_filt_func,
         ):
+            print("install_name", install_name, skip_libs)
             if depending_path is None:
+                for name in skip_libs:
+                    if name in install_name:
+                        continue
                 missing_libs = True
                 continue
             if copy_filt_func and not copy_filt_func(depending_path):
@@ -343,6 +351,7 @@ def tree_libs_from_directory(
     copy_filt_func: Callable[[str], bool] = lambda path: True,
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
+    skip_libs: Optional[None,str,Iterable[str]] = None,
 ) -> Dict[Text, Dict[Text, Text]]:
     """Return an analysis of the libraries in the directory of `start_path`.
 
@@ -395,6 +404,7 @@ def tree_libs_from_directory(
         lib_filt_func=lib_filt_func,
         copy_filt_func=copy_filt_func,
         ignore_missing=ignore_missing,
+        skip_libs=skip_libs
     )
 
 
