@@ -51,7 +51,7 @@ def get_dependencies(
     lib_fname,  # type: Text
     executable_path=None,  # type: Optional[Text]
     filt_func=lambda filepath: True,  # type: Callable[[str], bool]
-    skip_libs=Iterable[str]=None,
+    skip_libs=None # Iterable[str]
 ):
     # type: (...) -> Iterator[Tuple[Optional[Text], Text]]
     """Find and yield the real paths of dependencies of the library `lib_fname`
