@@ -153,6 +153,13 @@ def get_dependencies(
                 )
             yield dependency_path, install_name
         except DependencyNotFound as e:
+            skip = False
+            for skip_lib in skip_libs:
+                if skip_lib in install_name:
+                    skip = True
+                    break
+            if skip:
+                continue
             message = "\n%s not found:\n  Needed by: %s [%s]" % (
                 install_name,
                 lib_fname,
