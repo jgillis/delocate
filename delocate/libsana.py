@@ -51,6 +51,7 @@ def get_dependencies(
     lib_fname,  # type: Text
     executable_path=None,  # type: Optional[Text]
     filt_func=lambda filepath: True,  # type: Callable[[str], bool]
+    skip_libs=Iterable[str]=None,
 ):
     # type: (...) -> Iterator[Tuple[Optional[Text], Text]]
     """Find and yield the real paths of dependencies of the library `lib_fname`
@@ -91,6 +92,7 @@ def get_dependencies(
     DependencyNotFound
         When `lib_fname` does not exist.
     """
+    skip_libs = [] if skip_libs is None else skip_libs
     if not filt_func(lib_fname):
         logger.debug("Ignoring dependencies of %s" % lib_fname)
         return
@@ -122,7 +124,19 @@ def get_dependencies(
             else:
                 dependency_path = search_environment_for_lib(install_name_lookup)
             if not os.path.isfile(dependency_path):
-                if not _filter_system_libs(dependency_path):
+                skip = False
+                print("dependency_path",dependency_path)
+                for skip_lib in skip_libs:
+                    if skip_lib in dependency_path:
+                        skip = True
+                        break
+                if skip:
+                    logger.debug(
+                        "Skipped missing dependency %s"
+                        " because it matches skip_libs argumen.",
+                        dependency_path,
+                    )
+                elif not _filter_system_libs(dependency_path):
                     logger.debug(
                         "Skipped missing dependency %s"
                         " because it is a system library.",
@@ -197,7 +211,7 @@ def walk_library(
         return
     yield lib_fname
     for dependency_fname, install_name in get_dependencies(
-        lib_fname, executable_path=executable_path, filt_func=filt_func
+        lib_fname, executable_path=executable_path, filt_func=filt_func,skip_libs=skip_libs
     ):
         if dependency_fname is None:
             skip = False
@@ -327,6 +341,7 @@ def _tree_libs_from_libraries(
             library_path,
             executable_path=executable_path,
             filt_func=lib_filt_func,
+            skip_libs=skip_libs
         ):
             print("install_name", install_name, skip_libs)
             if depending_path is None:
