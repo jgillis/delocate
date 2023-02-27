@@ -437,6 +437,7 @@ def _allow_all(path: str) -> bool:
 def tree_libs(
     start_path,  # type: Text
     filt_func=None,  # type: Optional[Callable[[Text], bool]]
+    skip_libs=None,  # type: Optional[Union[Text, Iterable[Text]]]
 ):
     # type: (...) -> Dict[Text, Dict[Text, Text]]
     """Return analysis of library dependencies within `start_path`
@@ -493,6 +494,7 @@ def tree_libs(
             for dependency_path, install_name in get_dependencies(
                 depending_path,
                 filt_func=filt_func,
+                skip_libs=skip_libs
             ):
                 if dependency_path is None:
                     # Mimic deprecated behavior.
