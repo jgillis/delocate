@@ -233,6 +233,7 @@ def copy_recurse(
     lib_path,  # type: Text
     copy_filt_func=None,  # type: Optional[Callable[[Text], bool]]
     copied_libs=None,  # type: Optional[Dict[Text, Dict[Text, Text]]]
+    skip_libs=None,  # type: Optional[Iterable[Text]]
 ):
     # type: (...) -> Dict[Text, Dict[Text, Text]]
     """Analyze `lib_path` for library dependencies and copy libraries
@@ -284,7 +285,7 @@ def copy_recurse(
     done = False
     while not done:
         in_len = len(copied_libs)
-        _copy_required(lib_path, copy_filt_func, copied_libs)
+        _copy_required(lib_path, copy_filt_func, copied_libs, skip_libs)
         done = len(copied_libs) == in_len
     return copied_libs
 
@@ -293,6 +294,7 @@ def _copy_required(
     lib_path,  # type: Text
     copy_filt_func,  # type: Optional[Callable[[Text], bool]]
     copied_libs,  # type: Dict[Text, Dict[Text, Text]]
+    skip_libs
 ):
     # type: (...) -> None
     """Copy libraries required for files in `lib_path` to `copied_libs`
@@ -348,7 +350,7 @@ def _copy_required(
         This function is obsolete, and is only used by :func:`copy_recurse`.
     """
     # Paths will be prepended with `lib_path`
-    lib_dict = tree_libs(lib_path)
+    lib_dict = tree_libs(lib_path,skip_libs=skip_libs)
     # Map library paths after copy ('copied') to path before copy ('orig')
     rp_lp = realpath(lib_path)
     copied2orig = dict((pjoin(rp_lp, basename(c)), c) for c in copied_libs)

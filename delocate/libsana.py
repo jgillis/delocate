@@ -93,6 +93,9 @@ def get_dependencies(
         When `lib_fname` does not exist.
     """
     skip_libs = [] if skip_libs is None else skip_libs
+    print("get_dependencies", skip_libs)
+    import traceback
+    traceback.print_stack(file=sys.stdout)
     if not filt_func(lib_fname):
         logger.debug("Ignoring dependencies of %s" % lib_fname)
         return
@@ -149,10 +152,11 @@ def get_dependencies(
                     "%s resolved to: %s", install_name, dependency_path
                 )
             yield dependency_path, install_name
-        except DependencyNotFound:
-            message = "\n%s not found:\n  Needed by: %s" % (
+        except DependencyNotFound as e:
+            message = "\n%s not found:\n  Needed by: %s [%s]" % (
                 install_name,
                 lib_fname,
+                str(e)
             )
             if install_name.startswith("@rpath"):
                 message += "\n  Search path:\n    " + "\n    ".join(rpaths)
