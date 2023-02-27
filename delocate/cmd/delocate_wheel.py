@@ -127,7 +127,7 @@ def main():
     else:
         require_archs = opts.require_archs
     lib_filt_func = "dylibs-only" if opts.dylibs_only else None
-    skip_libs = [] if skip_libs is None else skip_libs
+    skip_libs = [] if opts.skip_libs is None else opts.skip_libs
     if isinstance(skip_libs, str):
         skip_libs = skip_libs.split(":")
     def lib_filt_func(arg):
@@ -152,7 +152,7 @@ def main():
             require_archs=require_archs,
             executable_path=opts.executable_path,
             ignore_missing=opts.ignore_missing_dependencies,
-            skip_libs=opts.skip_libs
+            skip_libs=skip_libs
         )
         if opts.verbose and len(copied):
             print("Copied to package {0} directory:".format(opts.lib_sdir))

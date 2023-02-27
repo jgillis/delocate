@@ -403,9 +403,6 @@ def tree_libs_from_directory(
         When any dependencies can not be located and ``ignore_missing`` is
         False.
     """
-    skip_libs = [] if skip_libs is None else skip_libs
-    if isinstance(skip_libs, str):
-        skip_libs = skip_libs.split(":")
     return _tree_libs_from_libraries(
         walk_directory(
             start_path, lib_filt_func, executable_path=executable_path, skip_libs=skip_libs
