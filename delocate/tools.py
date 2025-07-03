@@ -997,4 +997,5 @@ def validate_signature(filename: str) -> None:
         return  # File has no signature, and adding a new one isn't necessary
 
     # This file's signature is invalid and needs to be replaced
-    replace_signature(filename, "-")  # Replace with an ad-hoc signature
+    _run(["codesign", "--remove-signature", filename], check=True)
+    # replace_signature(filename, "-")  # Replace with an ad-hoc signature
