@@ -968,6 +968,8 @@ def replace_signature(filename: str, identity: str) -> None:
     identity : str
         The signing identity to use.
     """
+    if identity=="-":
+        return
     try:
         _run(["codesign", "--force", "--sign", "--verbose=4", identity, filename], check=True)
     except subprocess.CalledProcessError as e:
