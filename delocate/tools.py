@@ -969,7 +969,7 @@ def replace_signature(filename: str, identity: str) -> None:
         The signing identity to use.
     """
     try:
-        _run(["codesign", "--force", "--sign", identity, filename], check=True)
+        _run(["codesign", "--force", "--sign", "--verbose=4", identity, filename], check=True)
     except subprocess.CalledProcessError as e:
         if "not signed at all" in e.stderr.decode("ascii"):
             # Silent ignore if already unsigned
