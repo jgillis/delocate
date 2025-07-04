@@ -211,6 +211,8 @@ def walk_library(
         The path of each library depending on `lib_fname`, including
         `lib_fname`, without duplicates.
     """
+    if skip_libs is None:
+        skip_libs = []
     if visited is None:
         visited = {lib_fname}
     elif lib_fname in visited:
