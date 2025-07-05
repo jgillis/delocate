@@ -356,7 +356,7 @@ def _tree_libs_from_libraries(
             filt_func=lib_filt_func,
             skip_libs=skip_libs
         ):
-            print("install_name", install_name, skip_libs)
+            print("debug _tree_libs_from_libraries", library_path, depending_path, install_name, skip_libs)
             if depending_path is None:
                 for name in skip_libs:
                     if name in install_name:
@@ -367,7 +367,6 @@ def _tree_libs_from_libraries(
                 continue
             lib_dict.setdefault(depending_path, {})
             lib_dict[depending_path][library_path] = install_name
-
     if missing_libs and not ignore_missing:
         # get_dependencies will already have logged details of missing
         # libraries.
