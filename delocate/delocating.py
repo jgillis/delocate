@@ -208,8 +208,11 @@ def _update_install_names(
     # type: (...) -> None
     """Update the install names of libraries."""
     for required in files_to_delocate:
+        print("_update_install_names", required)
+        clean_rpath(required)
         # Set relative path for local library
         for requiring, orig_install_name in lib_dict[required].items():
+            print("_update_install_names", requiring)
             add_rpath(requiring, '@loader_path')
             clean_rpath(requiring)
             req_rel = relpath(required, dirname(requiring))
