@@ -36,6 +36,7 @@ from .libsana import (
 from .tmpdirs import TemporaryDirectory
 from .tools import (
     add_rpath,
+    clean_rpath,
     dir2zip,
     find_package_dirs,
     get_archs,
@@ -209,7 +210,8 @@ def _update_install_names(
     for required in files_to_delocate:
         # Set relative path for local library
         for requiring, orig_install_name in lib_dict[required].items():
-            add_rpath(requiring, '@loader_path/')
+            add_rpath(requiring, '@loader_path')
+            clean_rpath(requiring)
             req_rel = relpath(required, dirname(requiring))
             new_install_name = "@rpath/" + req_rel
             if orig_install_name == new_install_name:
@@ -366,7 +368,8 @@ def _copy_required(
         procd_requirings = {}
         # Set requiring lib install names to point to local copy
         for requiring, orig_install_name in requirings.items():
-            add_rpath(requiring, '@loader_path/')
+            add_rpath(requiring, '@loader_path')
+            clean_rpath(requiring)
             set_install_name(
                 requiring,
                 orig_install_name,

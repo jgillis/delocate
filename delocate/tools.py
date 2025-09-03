@@ -760,6 +760,50 @@ def get_environment_variable_paths():
                 env_var_paths.append(path)
     return tuple(env_var_paths)
 
+@ensure_writable
+def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
+    """Remove any RPATH entries from `filename` containing 'Users/runner'.
+
+    Parameters
+    ----------
+    filename : str
+        filename of library
+    ad_hoc_sign : {True, False}, optional
+        If True, sign file with ad-hoc signature
+    """
+    import subprocess
+
+    try:
+        # List all current rpaths
+        output = subprocess.check_output(
+            ["otool", "-l", filename], text=True, stderr=subprocess.STDOUT
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"Failed to list rpaths for {filename}: {e.output}") from e
+
+    # Extract LC_RPATH paths
+    to_remove = []
+    lines = output.splitlines()
+    for i, line in enumerate(lines):
+        if line.strip().startswith("path "):
+            path = line.split()[1]
+            if "Users/runner" in path:
+                to_remove.append(path)
+
+    # Remove each offending rpath
+    for rpath in to_remove:
+        try:
+            _run(["install_name_tool", "-delete_rpath", rpath, filename], check=True)
+        except RuntimeError as e:
+            # If the path was already gone, ignore
+            if "no LC_RPATH load command with path" in str(e):
+                pass
+            else:
+                raise e
+
+    if ad_hoc_sign and to_remove:
+        replace_signature(filename, "-")
+
 
 @ensure_writable
 def add_rpath(filename: str, newpath: str, ad_hoc_sign: bool = True) -> None:
