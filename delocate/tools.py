@@ -762,7 +762,9 @@ def get_environment_variable_paths():
 
 @ensure_writable
 def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
-    """Remove any RPATH entries from `filename` containing 'Users/runner'.
+    """Remove RPATH entries from `filename` that either:
+    - Contain 'Users/runner' (build-time leakage), or
+    - Are duplicates of another RPATH (after soft normalization).
 
     Parameters
     ----------
@@ -772,31 +774,55 @@ def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
         If True, sign file with ad-hoc signature
     """
     import subprocess
+    import os
 
     try:
-        # List all current rpaths
         output = subprocess.check_output(
             ["otool", "-l", filename], text=True, stderr=subprocess.STDOUT
         )
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to list rpaths for {filename}: {e.output}") from e
 
-    # Extract LC_RPATH paths
-    to_remove = []
+    # Collect rpaths in file order
+    rpaths = []
     lines = output.splitlines()
     for i, line in enumerate(lines):
         if line.strip().startswith("path "):
             path = line.split()[1]
-            if "Users/runner" in path:
-                to_remove.append(path)
+            rpaths.append(path)
 
-    # Remove each offending rpath
+    # Normalize function: strip trailing slashes (except root)
+    def normalize(p: str) -> str:
+        p = p.rstrip()
+        while len(p) > 1 and p.endswith("/"):
+            p = p[:-1]
+        return p
+
+    seen = set()
+    to_remove = []
+
+    for rpath in rpaths:
+        norm = normalize(rpath)
+
+        # Rule 1: drop anything leaking Users/runner
+        if "Users/runner" in norm:
+            to_remove.append(rpath)
+            continue
+
+        # Rule 2: drop duplicates
+        if norm in seen:
+            to_remove.append(rpath)
+            continue
+
+        seen.add(norm)
+
+    # Remove flagged RPATHs
     for rpath in to_remove:
         try:
             _run(["install_name_tool", "-delete_rpath", rpath, filename], check=True)
         except RuntimeError as e:
-            # If the path was already gone, ignore
             if "no LC_RPATH load command with path" in str(e):
+                # benign, path already gone
                 pass
             else:
                 raise e
