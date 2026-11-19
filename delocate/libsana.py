@@ -51,7 +51,8 @@ def get_dependencies(
     lib_fname,  # type: Text
     executable_path=None,  # type: Optional[Text]
     filt_func=lambda filepath: True,  # type: Callable[[str], bool]
-    skip_libs=None # Iterable[str]
+    skip_libs=None, # Iterable[str]
+    cache=None # type: Optional[Dict]
 ):
     # type: (...) -> Iterator[Tuple[Optional[Text], Text]]
     """Find and yield the real paths of dependencies of the library `lib_fname`
@@ -92,6 +93,21 @@ def get_dependencies(
     DependencyNotFound
         When `lib_fname` does not exist.
     """
+    if cache is None:
+        yield from _get_dependencies(
+            lib_fname, executable_path, filt_func, skip_libs
+        )
+        return
+    # Avoid repeated otool calls; only valid while files are unmodified
+    key = (lib_fname, executable_path, tuple(skip_libs or ()))
+    if key not in cache:
+        cache[key] = list(
+            _get_dependencies(lib_fname, executable_path, filt_func, skip_libs)
+        )
+    yield from cache[key]
+
+
+def _get_dependencies(lib_fname, executable_path, filt_func, skip_libs):
     skip_libs = [] if skip_libs is None else skip_libs
     if not filt_func(lib_fname):
         logger.debug("Ignoring dependencies of %s" % lib_fname)
@@ -171,7 +187,8 @@ def walk_library(
     filt_func=lambda filepath: True,  # type: Callable[[Text], bool]
     visited=None,  # type: Optional[Set[Text]]
     executable_path=None,  # type: Optional[Text]
-    skip_libs=None # type: Union[None,str,Iterable[str]]
+    skip_libs=None, # type: Union[None,str,Iterable[str]]
+    cache=None # type: Optional[Dict]
 ):
     # type: (...) -> Iterator[Text]
     """
@@ -218,7 +235,8 @@ def walk_library(
         return
     yield lib_fname
     for dependency_fname, install_name in get_dependencies(
-        lib_fname, executable_path=executable_path, filt_func=filt_func,skip_libs=skip_libs
+        lib_fname, executable_path=executable_path, filt_func=filt_func,skip_libs=skip_libs,
+        cache=cache
     ):
         if dependency_fname is None:
             skip = False
@@ -237,6 +255,8 @@ def walk_library(
             filt_func=filt_func,
             visited=visited,
             executable_path=executable_path,
+            skip_libs=skip_libs,
+            cache=cache,
         ):
             yield sub_dependency
 
@@ -245,7 +265,8 @@ def walk_directory(
     root_path,  # type: Text
     filt_func=lambda filepath: True,  # type: Callable[[Text], bool]
     executable_path=None,  # type: Optional[Text]
-    skip_libs=None # type: Union[None,str,Iterable[str]]
+    skip_libs=None, # type: Union[None,str,Iterable[str]]
+    cache=None # type: Optional[Dict]
 ):
     # type: (...) -> Iterator[Text]
     """Walk along dependencies starting with the libraries within `root_path`.
@@ -285,7 +306,8 @@ def walk_directory(
                 filt_func=filt_func,
                 visited=visited_paths,
                 executable_path=executable_path,
-                skip_libs=skip_libs
+                skip_libs=skip_libs,
+                cache=cache
             ):
                 yield library_path
 
@@ -298,6 +320,7 @@ def _tree_libs_from_libraries(
     executable_path: Optional[str] = None,
     ignore_missing: bool = False,
     skip_libs: Union[None,str,Iterable[str]] = None,
+    cache: Optional[Dict] = None,
 ) -> Dict[str, Dict[str, str]]:
     """Return an analysis of the dependencies of `libraries`.
 
@@ -348,7 +371,8 @@ def _tree_libs_from_libraries(
             library_path,
             executable_path=executable_path,
             filt_func=lib_filt_func,
-            skip_libs=skip_libs
+            skip_libs=skip_libs,
+            cache=cache
         ):
             if depending_path is None:
                 for name in skip_libs:
@@ -423,14 +447,17 @@ def tree_libs_from_directory(
         When any dependencies can not be located and ``ignore_missing`` is
         False.
     """
+    cache = {}  # type: Dict
     return _tree_libs_from_libraries(
         walk_directory(
-            start_path, lib_filt_func, executable_path=executable_path, skip_libs=skip_libs
+            start_path, lib_filt_func, executable_path=executable_path, skip_libs=skip_libs,
+            cache=cache
         ),
         lib_filt_func=lib_filt_func,
         copy_filt_func=copy_filt_func,
         ignore_missing=ignore_missing,
-        skip_libs=skip_libs
+        skip_libs=skip_libs,
+        cache=cache
     )
 
 
