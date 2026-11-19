@@ -16,6 +16,12 @@ from typing import List, Optional, Text
 
 from delocate import __version__, delocate_wheel
 
+MACHO_MAGIC = {
+    b"\xfe\xed\xfa\xce", b"\xce\xfa\xed\xfe",  # 32-bit
+    b"\xfe\xed\xfa\xcf", b"\xcf\xfa\xed\xfe",  # 64-bit
+    b"\xca\xfe\xba\xbe", b"\xbe\xba\xfe\xca",  # fat
+}
+
 
 def main():
     # type: () -> None
@@ -136,7 +142,12 @@ def main():
             if lib in arg:
                 print("filtering hit.")
                 return False
-        return True
+        # Skip non-Mach-O files (headers, .m, .pc, ...): avoids otool calls
+        try:
+            with open(arg, "rb") as f:
+                return f.read(4) in MACHO_MAGIC
+        except OSError:
+            return True  # e.g. /usr/lib in dyld shared cache
     for wheel in wheels:
         if multi or opts.verbose:
             print("Fixing: " + wheel)
