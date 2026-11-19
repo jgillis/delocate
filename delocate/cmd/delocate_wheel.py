@@ -137,10 +137,8 @@ def main():
     if isinstance(skip_libs, str):
         skip_libs = skip_libs.split(":")
     def lib_filt_func(arg):
-        print("filtering", arg)
         for lib in skip_libs:
             if lib in arg:
-                print("filtering hit.")
                 return False
         # Skip non-Mach-O files (headers, .m, .pc, ...): avoids otool calls
         try:

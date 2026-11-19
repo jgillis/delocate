@@ -93,9 +93,6 @@ def get_dependencies(
         When `lib_fname` does not exist.
     """
     skip_libs = [] if skip_libs is None else skip_libs
-    print("get_dependencies", skip_libs)
-    import traceback
-    traceback.print_stack(file=sys.stdout)
     if not filt_func(lib_fname):
         logger.debug("Ignoring dependencies of %s" % lib_fname)
         return
@@ -115,8 +112,6 @@ def get_dependencies(
         if not install_name_lookup.startswith("/") and not install_name_lookup.startswith("@"):
             install_name_lookup = "@rpath/"+install_name_lookup
         try:
-            print("lib_fname",lib_fname)
-            print("executable_path",executable_path)
             if install_name_lookup.startswith("@"):
                 dependency_path = resolve_dynamic_paths(
                     install_name_lookup,
@@ -128,7 +123,6 @@ def get_dependencies(
                 dependency_path = search_environment_for_lib(install_name_lookup)
             if not os.path.isfile(dependency_path):
                 skip = False
-                print("dependency_path",dependency_path)
                 for skip_lib in skip_libs:
                     if skip_lib in dependency_path:
                         skip = True
@@ -356,7 +350,6 @@ def _tree_libs_from_libraries(
             filt_func=lib_filt_func,
             skip_libs=skip_libs
         ):
-            print("debug _tree_libs_from_libraries", library_path, depending_path, install_name, skip_libs)
             if depending_path is None:
                 for name in skip_libs:
                     if name in install_name:
