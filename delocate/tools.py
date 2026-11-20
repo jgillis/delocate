@@ -760,21 +760,9 @@ def get_environment_variable_paths():
                 env_var_paths.append(path)
     return tuple(env_var_paths)
 
-@ensure_writable
-def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
-    """Remove RPATH entries from `filename` that either:
-    - Contain 'Users/runner' (build-time leakage), or
-    - Are duplicates of another RPATH (after soft normalization).
-
-    Parameters
-    ----------
-    filename : str
-        filename of library
-    ad_hoc_sign : {True, False}, optional
-        If True, sign file with ad-hoc signature
-    """
+def _list_rpaths(filename: str) -> List[str]:
+    """Return the rpaths of `filename` in load command order."""
     import subprocess
-    import os
 
     try:
         output = subprocess.check_output(
@@ -790,19 +778,24 @@ def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
         if line.strip().startswith("path "):
             path = line.split()[1]
             rpaths.append(path)
+    return rpaths
 
-    # Normalize function: strip trailing slashes (except root)
-    def normalize(p: str) -> str:
-        p = p.rstrip()
-        while len(p) > 1 and p.endswith("/"):
-            p = p[:-1]
-        return p
 
+def _normalize_rpath(p: str) -> str:
+    """Strip trailing slashes (except root)."""
+    p = p.rstrip()
+    while len(p) > 1 and p.endswith("/"):
+        p = p[:-1]
+    return p
+
+
+def _rpaths_to_clean(rpaths: List[str]) -> Tuple[List[str], Set[str]]:
+    """Return the rpaths to remove, and the normalized rpaths kept."""
     seen = set()
     to_remove = []
 
     for rpath in rpaths:
-        norm = normalize(rpath)
+        norm = _normalize_rpath(rpath)
 
         # Rule 1: drop anything leaking Users/runner
         if "Users/runner" in norm:
@@ -815,6 +808,23 @@ def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
             continue
 
         seen.add(norm)
+    return to_remove, seen
+
+
+@ensure_writable
+def clean_rpath(filename: str, ad_hoc_sign: bool = True) -> None:
+    """Remove RPATH entries from `filename` that either:
+    - Contain 'Users/runner' (build-time leakage), or
+    - Are duplicates of another RPATH (after soft normalization).
+
+    Parameters
+    ----------
+    filename : str
+        filename of library
+    ad_hoc_sign : {True, False}, optional
+        If True, sign file with ad-hoc signature
+    """
+    to_remove, _ = _rpaths_to_clean(_list_rpaths(filename))
 
     # Remove flagged RPATHs
     for rpath in to_remove:
@@ -852,6 +862,48 @@ def add_rpath(filename: str, newpath: str, ad_hoc_sign: bool = True) -> None:
             pass
         else:
             raise e
+
+    if ad_hoc_sign:
+        replace_signature(filename, "-")
+
+
+@ensure_writable
+def update_load_commands(
+    filename: str,
+    changes: Dict[str, str],
+    add_rpaths: Sequence[str] = (),
+    ad_hoc_sign: bool = True,
+) -> None:
+    """clean_rpath, add_rpath and set_install_name in one install_name_tool call
+
+    Parameters
+    ----------
+    filename : str
+        filename of library
+    changes : dict
+        (old install name, new install name) pairs
+    add_rpaths : sequence of str, optional
+        rpaths to add, unless present after cleaning
+    ad_hoc_sign : {True, False}, optional
+        If True, sign file with ad-hoc signature
+    """
+    to_remove, kept = _rpaths_to_clean(_list_rpaths(filename))
+    args = []
+    for rpath in dict.fromkeys(to_remove):
+        args += ["-delete_rpath", rpath]
+    for rpath in add_rpaths:
+        if _normalize_rpath(rpath) not in kept:
+            kept.add(_normalize_rpath(rpath))
+            args += ["-add_rpath", rpath]
+    for oldname, newname in changes.items():
+        args += ["-change", oldname, newname]
+    if not args:
+        return
+    _run(["install_name_tool"] + args + [filename], check=True)
+    # A removed rpath present more than once needs one delete per copy
+    for i, rpath in enumerate(to_remove):
+        if rpath in to_remove[:i]:
+            _run(["install_name_tool", "-delete_rpath", rpath, filename], check=True)
 
     if ad_hoc_sign:
         replace_signature(filename, "-")

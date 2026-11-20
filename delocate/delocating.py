@@ -42,6 +42,7 @@ from .tools import (
     get_archs,
     set_install_id,
     set_install_name,
+    update_load_commands,
     validate_signature,
     zip2dir,
 )
@@ -207,12 +208,15 @@ def _update_install_names(
 ):
     # type: (...) -> None
     """Update the install names of libraries."""
+    # Collect all edits per file first, then apply them in one go
+    changes = {}  # type: Dict[Text, Dict[Text, Text]]
+    add_rpaths = {}  # type: Dict[Text, List[Text]]
     for required in files_to_delocate:
-        clean_rpath(required)
+        changes.setdefault(required, {})
         # Set relative path for local library
         for requiring, orig_install_name in lib_dict[required].items():
-            add_rpath(requiring, '@loader_path')
-            clean_rpath(requiring)
+            changes.setdefault(requiring, {})
+            add_rpaths[requiring] = ['@loader_path']
             req_rel = relpath(required, dirname(requiring))
             new_install_name = "@rpath/" + req_rel
             if orig_install_name == new_install_name:
@@ -229,7 +233,11 @@ def _update_install_names(
                     orig_install_name,
                     new_install_name,
                 )
-                set_install_name(requiring, orig_install_name, new_install_name)
+                changes[requiring][orig_install_name] = new_install_name
+    for filename, file_changes in changes.items():
+        update_load_commands(
+            filename, file_changes, add_rpaths.get(filename, ())
+        )
 
 
 def copy_recurse(
