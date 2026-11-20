@@ -97,6 +97,20 @@ def back_tick(
     return proc.stdout.strip(), proc.stderr.strip()
 
 
+def _tool_env() -> Dict[str, str]:
+    """Environment for external tools (otool, install_name_tool, ...)
+
+    DYLD_LIBRARY_PATH and DYLD_FALLBACK_LIBRARY_PATH are search paths for
+    delocate's own library lookup. Passed on to the tools, a libc++ in those
+    paths overrides the system one and makes every tool start ~8x slower.
+    """
+    return {
+        k: v
+        for k, v in os.environ.items()
+        if k not in ("DYLD_LIBRARY_PATH", "DYLD_FALLBACK_LIBRARY_PATH")
+    }
+
+
 def _run(
     cmd: Sequence[str], *, check: bool
 ) -> subprocess.CompletedProcess[str]:
@@ -139,6 +153,7 @@ def _run(
             stderr=subprocess.PIPE,
             text=True,
             check=check,
+            env=_tool_env(),
         )
     except subprocess.CalledProcessError as exc:
         raise RuntimeError(
@@ -766,7 +781,8 @@ def _list_rpaths(filename: str) -> List[str]:
 
     try:
         output = subprocess.check_output(
-            ["otool", "-l", filename], text=True, stderr=subprocess.STDOUT
+            ["otool", "-l", filename], text=True, stderr=subprocess.STDOUT,
+            env=_tool_env(),
         )
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to list rpaths for {filename}: {e.output}") from e
